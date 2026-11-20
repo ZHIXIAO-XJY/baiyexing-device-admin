@@ -1,0 +1,22 @@
+services:
+  - type: web
+    name: baiyexing-device-admin
+    runtime: docker
+    plan: starter
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /api/health
+    envVars:
+      - key: ADMIN_PASSWORD
+        sync: false
+      - key: HOST
+        value: 0.0.0.0
+      - key: TRUST_PROXY
+        value: "1"
+      - key: HTTPS
+        value: "1"
+      - key: ALLOWED_ORIGINS
+        value: https://zhixiao-xjy.github.io
+    disk:
+      name: admin-data
+      mountPath: /app/data
+      sizeGB: 1
