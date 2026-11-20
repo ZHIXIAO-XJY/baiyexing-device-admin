@@ -1,0 +1,15 @@
+services:
+  admin:
+    build: .
+    restart: unless-stopped
+    ports:
+      - "8787:8787"
+    environment:
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD}
+      HOST: 0.0.0.0
+      PORT: 8787
+      TRUST_PROXY: "1"
+      HTTPS: "1"
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-https://zhixiao-xjy.github.io}
+    volumes:
+      - ./data:/app/data
