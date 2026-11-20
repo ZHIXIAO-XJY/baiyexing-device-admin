@@ -1,0 +1,237 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+<link rel="manifest" href="/admin-manifest.webmanifest" />
+<link rel="apple-touch-icon" href="/admin-apple-touch.png" />
+<meta name="theme-color" content="#edf1f3" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<title>白夜行 · 设备后台</title>
+<style>
+  :root{
+    --bg:#edf1f3;--panel:#fbfdfe;--panel2:#f2f6f8;--text:#15252e;--soft:#31434c;--muted:#6d7f88;--faint:#9cabb2;
+    --line:rgba(21,37,46,.10);--line2:rgba(21,37,46,.18);--accent:#2e6f8a;--accent-soft:rgba(46,111,138,.09);
+    --pass:#2f7d62;--pass-soft:rgba(47,125,98,.09);--warn:#94641c;--warn-soft:rgba(148,100,28,.09);--danger:#a64848;--danger-soft:rgba(166,72,72,.08);
+    --sans:"Inter","PingFang SC","Microsoft YaHei",system-ui,sans-serif;--mono:"SFMono-Regular","Cascadia Code",Consolas,monospace;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:radial-gradient(900px 520px at 80% -10%,var(--accent-soft),transparent 62%),var(--bg);color:var(--text);font-family:var(--sans);font-size:13px;-webkit-font-smoothing:antialiased}
+  button,input{font:inherit}
+  button{cursor:pointer}
+  .hidden{display:none!important}
+  .login-wrap{min-height:100dvh;display:grid;place-items:center;padding:24px}
+  .login{width:min(380px,100%);background:var(--panel);border:1px solid var(--line);border-radius:20px;padding:26px;box-shadow:0 24px 70px rgba(31,55,67,.12)}
+  .brand{display:flex;align-items:center;gap:9px;margin-bottom:26px}
+  .brand i{width:32px;height:32px;border-radius:9px;background:linear-gradient(145deg,#214a5d,#2e6f8a);display:grid;place-items:center;color:#fff;font:700 10px var(--mono);font-style:normal}
+  .brand b{font-size:15px;letter-spacing:.06em}
+  .brand span{display:block;font-size:9px;color:var(--faint);letter-spacing:.14em;margin-top:2px}
+  h1{font-size:22px;font-weight:600;letter-spacing:-.03em;margin:0}
+  .sub{color:var(--muted);font-size:10.5px;line-height:1.7;margin:5px 0 18px}
+  label{display:block;font-size:9px;color:var(--faint);letter-spacing:.08em;margin-bottom:6px}
+  .input{width:100%;height:40px;border:1px solid var(--line);border-radius:10px;background:var(--panel2);padding:0 11px;color:var(--text);outline:0}
+  .input:focus{border-color:var(--line2);background:var(--panel);box-shadow:0 0 0 3px var(--accent-soft)}
+  .btn{height:36px;padding:0 13px;border:0;border-radius:10px;background:var(--panel2);color:var(--soft);font-weight:600;font-size:11px;display:inline-flex;align-items:center;gap:6px}
+  .btn:hover{background:#e6edf1}.btn.primary{background:var(--accent);color:#fff}.btn.primary:hover{filter:brightness(1.06)}
+  .btn.danger{background:var(--danger-soft);color:var(--danger)}.btn.ghost{background:transparent;border:1px solid var(--line)}
+  .login .btn.primary{width:100%;height:42px;margin-top:14px;justify-content:center}
+  .error{color:var(--danger);font-size:10px;min-height:16px;margin-top:8px}
+  .shell{min-height:100dvh;display:flex;flex-direction:column}
+  header{display:flex;align-items:center;gap:18px;padding:0 26px;height:64px;border-bottom:1px solid var(--line);background:rgba(251,253,254,.78);backdrop-filter:blur(16px);position:sticky;top:0;z-index:10}
+  header .spacer{flex:1}
+  .who{font-size:10px;color:var(--muted)}
+  main{padding:24px 26px 46px;max-width:1500px;width:100%;margin:0 auto}
+  .page-head{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;margin-bottom:18px}
+  .page-head h2{margin:0;font-size:26px;font-weight:600;letter-spacing:-.03em}
+  .page-head p{margin:5px 0 0;font-size:10.5px;color:var(--muted)}
+  .stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-bottom:18px}
+  .stat{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:15px 16px}
+  .stat .l{font-size:9px;color:var(--faint);letter-spacing:.12em}
+  .stat .v{font:600 26px/1.2 var(--mono);letter-spacing:-.05em;margin-top:5px}
+  .stat .s{font-size:9.5px;color:var(--muted);margin-top:3px}
+  .toolbar{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+  .search{width:min(320px,100%);height:34px;border:1px solid var(--line);border-radius:9px;background:var(--panel2);padding:0 10px;outline:0;font-size:11px}
+  .search:focus{border-color:var(--line2);background:var(--panel)}
+  .toolbar .spacer{flex:1}
+  .updated{font-size:9px;color:var(--faint)}
+  .table-wrap{background:var(--panel);border:1px solid var(--line);border-radius:16px;overflow:hidden}
+  table{width:100%;border-collapse:collapse;font-size:11px}
+  th{text-align:left;padding:11px 14px;font-size:8.5px;letter-spacing:.1em;color:var(--faint);font-weight:600;background:var(--panel2);border-bottom:1px solid var(--line);white-space:nowrap}
+  td{padding:12px 14px;border-bottom:1px solid var(--line);vertical-align:top}
+  tr:last-child td{border-bottom:0}
+  tr.revoked{background:rgba(166,72,72,.035)}
+  .device{display:flex;align-items:center;gap:9px;min-width:170px}
+  .dot{width:7px;height:7px;border-radius:50%;background:var(--faint);flex:none}
+  .dot.online{background:var(--pass);box-shadow:0 0 0 4px var(--pass-soft)}
+  .dot.offline{background:#b7c0c4}
+  .device b{display:block;font-size:11px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:210px}
+  .device span{display:block;font-size:9px;color:var(--faint);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:210px}
+  .pill{display:inline-flex;align-items:center;gap:4px;height:19px;padding:0 7px;border-radius:99px;background:var(--panel2);color:var(--muted);font-size:8.5px;white-space:nowrap}
+  .pill.web{background:var(--accent-soft);color:var(--accent)}.pill.app{background:var(--pass-soft);color:var(--pass)}.pill.revoked{background:var(--danger-soft);color:var(--danger)}
+  .ip{font:10px/1.5 var(--mono);color:var(--soft);white-space:nowrap}
+  .ip small{display:block;font-family:var(--sans);color:var(--faint);font-size:8.5px}
+  .project b{display:block;font-weight:600;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .project span{display:block;color:var(--faint);font-size:9px;margin-top:2px}
+  .actions{display:flex;gap:5px;justify-content:flex-end;white-space:nowrap}
+  .actions .btn{height:27px;font-size:9.5px;padding:0 8px}
+  .empty{padding:55px 20px;text-align:center;color:var(--faint);font-size:11px}
+  .notice{margin-top:12px;border:1px dashed var(--line2);border-radius:11px;padding:10px 12px;color:var(--faint);font-size:9.5px;line-height:1.7}
+  @media(max-width:780px){
+    .stats{grid-template-columns:1fr 1fr 1fr}
+    .table-wrap{border:0;background:transparent;overflow:visible}
+    table{min-width:0;display:block}
+    thead{display:none}
+    tbody{display:block}
+    tr{display:block;background:var(--panel);border:1px solid var(--line);border-radius:14px;margin-bottom:10px;overflow:hidden}
+    td{display:flex;gap:12px;align-items:flex-start;padding:8px 12px;border-bottom:1px solid var(--line);white-space:normal}
+    td:last-child{border-bottom:0}
+    td::before{content:attr(data-label);width:58px;flex:none;color:var(--faint);font-size:8.5px;padding-top:3px}
+    .device,.ip,.project{min-width:0}
+    .device b,.project b{max-width:calc(100vw - 150px)}
+    .actions{justify-content:flex-start}
+    .page-head{display:block}.page-head .updated{display:block;margin-top:6px}
+    .toolbar{flex-wrap:wrap}.toolbar .search{width:100%}
+
+    header{padding:0 14px;height:58px} main{padding:16px 12px 32px}
+    .page-head h2{font-size:21px}.stats{gap:7px}.stat{padding:12px}.stat .v{font-size:20px}
+    .table-wrap{overflow:auto} table{min-width:900px}
+    .who{display:none}
+  }
+</style>
+</head>
+<body>
+<div class="login-wrap" id="loginView">
+  <form class="login" id="loginForm">
+    <div class="brand"><i>BY</i><div><b>白夜行 · 设备后台</b><span>DEVICE CONTROL</span></div></div>
+    <h1>管理员登录</h1>
+    <p class="sub">查看已登录设备、IP、工作台状态，并可下线违规设备。设备数据只保存在本机后台。</p>
+    <label for="password">管理员密码</label>
+    <input class="input" id="password" type="password" autocomplete="current-password" placeholder="输入 ADMIN_PASSWORD" required />
+    <div class="error" id="loginError"></div>
+    <button class="btn primary" type="submit">进入后台</button>
+  </form>
+</div>
+
+<div class="shell hidden" id="dashboard">
+  <header>
+    <div class="brand" style="margin:0"><i>BY</i><div><b>白夜行 · 设备后台</b><span>DEVICE CONTROL</span></div></div>
+    <div class="spacer"></div>
+    <span class="who">仅管理员可见</span>
+    <button class="btn ghost hidden" id="btnInstall" type="button">安装到设备</button>
+    <button class="btn ghost" id="btnRefresh" type="button">刷新</button>
+    <button class="btn ghost" id="btnLogout" type="button">退出</button>
+  </header>
+  <main>
+    <div class="page-head">
+      <div><h2>设备工作台</h2><p>登录设备、IP、当前项目与在线状态；下线后客户端下次心跳会被拒绝。</p></div>
+      <span class="updated" id="updatedAt"></span>
+    </div>
+    <div class="stats">
+      <div class="stat"><div class="l">DEVICES / 设备总数</div><div class="v" id="statTotal">0</div><div class="s">已注册设备</div></div>
+      <div class="stat"><div class="l">ONLINE / 在线</div><div class="v" id="statOnline">0</div><div class="s">90 秒内有心跳</div></div>
+      <div class="stat"><div class="l">REVOKED / 已下线</div><div class="v" id="statRevoked">0</div><div class="s">禁止继续使用</div></div>
+    </div>
+    <div class="toolbar">
+      <input class="search" id="search" placeholder="搜索设备名 / IP / 项目…" />
+      <div class="spacer"></div>
+      <span class="updated" id="tableNote"></span>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr>
+          <th>设备</th><th>平台</th><th>IP</th><th>当前工作台</th><th>最近在线</th><th>状态</th><th style="text-align:right">操作</th>
+        </tr></thead>
+        <tbody id="deviceRows"></tbody>
+      </table>
+      <div class="empty hidden" id="emptyState">还没有设备注册。打开白夜行，在设置里填写本后台地址并启用心跳。</div>
+    </div>
+    <div class="notice">隐私提示：后台只记录设备 ID、IP、User-Agent、项目名称/场次数和心跳时间，不记录台词正文、API Key 或用户图片。请使用 HTTPS，并限制后台访问来源。</div>
+  </main>
+</div>
+
+<script>
+(() => {
+  const $ = (s) => document.querySelector(s);
+  let csrf = '';
+  let timer = null;
+  let devices = [];
+  const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const fmt = (s) => { if (!s) return '—'; const d = new Date(s); if (Number.isNaN(d.getTime())) return '—'; return d.toLocaleString('zh-CN'); };
+  const rel = (s) => { if (!s) return '—'; const n = Date.now() - new Date(s).getTime(); if (n < 60000) return '刚刚'; if (n < 3600000) return Math.floor(n/60000) + ' 分钟前'; if (n < 86400000) return Math.floor(n/3600000) + ' 小时前'; return Math.floor(n/86400000) + ' 天前'; };
+  async function api(path, opts = {}) {
+    const res = await fetch(path, { ...opts, headers: { 'Content-Type': 'application/json', ...(csrf ? { 'X-CSRF-Token': csrf } : {}), ...(opts.headers || {}) }, credentials: 'same-origin' });
+    const data = await res.json().catch(() => ({}));
+    if (res.status === 401) { showLogin(); throw new Error('未登录'); }
+    if (!res.ok) throw new Error(data.error || ('HTTP ' + res.status));
+    return data;
+  }
+  function showLogin(){ $('#dashboard').classList.add('hidden'); $('#loginView').classList.remove('hidden'); if (timer) clearInterval(timer); timer = null; }
+  function showDash(){ $('#loginView').classList.add('hidden'); $('#dashboard').classList.remove('hidden'); if(!timer) timer = setInterval(refresh, 10000); }
+  async function login(e){
+    e.preventDefault(); $('#loginError').textContent = '';
+    try {
+      const data = await api('/api/admin/login', { method: 'POST', body: JSON.stringify({ password: $('#password').value }) });
+      csrf = data.csrf; $('#password').value = ''; showDash(); await refresh();
+    } catch (err) { $('#loginError').textContent = '登录失败：' + err.message; }
+  }
+  async function logout(){ try { await api('/api/admin/logout', { method: 'POST', body: '{}' }); } catch(e){} csrf=''; showLogin(); }
+  async function refresh(){
+    try {
+      const [ov, list] = await Promise.all([api('/api/admin/overview'), api('/api/admin/devices')]);
+      $('#statTotal').textContent = ov.total; $('#statOnline').textContent = ov.online; $('#statRevoked').textContent = ov.revoked;
+      devices = list.devices || [];
+      render();
+      $('#updatedAt').textContent = '更新于 ' + new Date().toLocaleTimeString('zh-CN');
+    } catch (e) { if (e.message !== '未登录') console.warn(e); }
+  }
+  function render(){
+    const q = $('#search').value.trim().toLowerCase();
+    const list = q ? devices.filter((d) => [d.name,d.id,d.ip,d.projectTitle,d.platform].join(' ').toLowerCase().includes(q)) : devices;
+    $('#tableNote').textContent = list.length + ' / ' + devices.length + ' 台';
+    $('#emptyState').classList.toggle('hidden', list.length > 0);
+    $('#deviceRows').innerHTML = list.map((d) => {
+      const online = !d.revoked && (Date.now() - new Date(d.lastSeen || 0).getTime()) < 90000;
+      const platform = (d.platform || 'web').toLowerCase();
+      const pclass = platform.includes('mini') ? 'app' : platform.includes('desktop') ? 'app' : 'web';
+      return `<tr class="${d.revoked ? 'revoked' : ''}">
+        <td data-label="设备"><div class="device"><span class="dot ${online ? 'online' : 'offline'}"></span><div><b>${esc(d.name || '未命名设备')}</b><span>${esc(d.id)}</span></div></div></td>
+        <td data-label="平台"><span class="pill ${pclass}">${esc(d.platform || 'web')}</span><div style="font-size:9px;color:var(--faint);margin-top:3px">${esc(d.appVersion || '')}</div></td>
+        <td data-label="IP"><div class="ip">${esc(d.ip || '—')}<small>${d.ipSource === 'proxy' ? '代理转发 IP' : '直连 IP'}</small></div></td>
+        <td data-label="工作台"><div class="project"><b>${esc(d.projectTitle || '—')}</b><span>${esc([d.mode,d.sceneCount ? d.sceneCount + ' 镜' : '',d.currentView].filter(Boolean).join(' · ')) || '—'}</span></div></td>
+        <td data-label="最近在线"><span class="pill">${esc(rel(d.lastSeen))}</span><div style="font-size:8.5px;color:var(--faint);margin-top:3px">${esc(fmt(d.lastSeen))}</div></td>
+        <td data-label="状态">${d.revoked ? '<span class="pill revoked">已下线</span>' : online ? '<span class="pill" style="color:var(--pass)">在线</span>' : '<span class="pill">离线</span>'}</td>
+        <td data-label="操作"><div class="actions">${d.revoked ? `<button class="btn ghost" data-act="restore" data-id="${esc(d.id)}">恢复</button>` : `<button class="btn danger" data-act="revoke" data-id="${esc(d.id)}">下线</button>`}</div></td>
+      </tr>`;
+    }).join('');
+  }
+  async function act(id, action){
+    if (action === 'revoke') {
+      const reason = prompt('下线原因（会显示给设备端）：', '违规使用');
+      if (reason === null) return;
+      await api('/api/admin/devices/' + encodeURIComponent(id) + '/revoke', { method: 'POST', body: JSON.stringify({ reason }) });
+    } else {
+      if (!confirm('恢复这台设备？')) return;
+      await api('/api/admin/devices/' + encodeURIComponent(id) + '/revoke', { method: 'POST', body: JSON.stringify({ reason: '' }) });
+    }
+    await refresh();
+  }
+  document.addEventListener('click', (e) => {
+    const b = e.target.closest('[data-act]'); if (!b) return;
+    act(b.dataset.id, b.dataset.act).catch((err) => alert(err.message));
+  });
+  let deferredPrompt = null;
+  window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); deferredPrompt = e; $('#btnInstall').classList.remove('hidden'); });
+  $('#btnInstall').addEventListener('click', async () => { if (!deferredPrompt) return; deferredPrompt.prompt(); await deferredPrompt.userChoice; deferredPrompt = null; $('#btnInstall').classList.add('hidden'); });
+  if ('serviceWorker' in navigator) navigator.serviceWorker.register('/admin-sw.js').catch(() => {});
+  $('#loginForm').addEventListener('submit', login);
+  $('#btnLogout').addEventListener('click', logout);
+  $('#btnRefresh').addEventListener('click', refresh);
+  $('#search').addEventListener('input', render);
+  (async () => {
+    try { const s = await api('/api/admin/session'); csrf = s.csrf; showDash(); await refresh(); }
+    catch (e) { showLogin(); }
+  })();
+})();
+</script>
+</body>
+</html>
