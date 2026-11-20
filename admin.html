@@ -74,7 +74,7 @@
   .project span{display:block;color:var(--faint);font-size:9px;margin-top:2px}
   .actions{display:flex;gap:5px;justify-content:flex-end;white-space:nowrap}
   .actions .btn{height:27px;font-size:9.5px;padding:0 8px}
-  .empty{padding:55px 20px;text-align:center;color:var(--faint);font-size:11px}
+  .section-head{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;margin:24px 0 10px}.section-head h3{margin:0;font-size:15px}.section-head p{margin:3px 0 0;font-size:9.5px;color:var(--faint)}.logs-wrap table{min-width:760px}.logs-wrap td{font-size:10px}.empty{padding:55px 20px;text-align:center;color:var(--faint);font-size:11px}
   .notice{margin-top:12px;border:1px dashed var(--line2);border-radius:11px;padding:10px 12px;color:var(--faint);font-size:9.5px;line-height:1.7}
   @media(max-width:780px){
     .stats{grid-template-columns:1fr 1fr 1fr}
@@ -145,7 +145,15 @@
       </table>
       <div class="empty hidden" id="emptyState">还没有设备注册。打开白夜行，在设置里填写本后台地址并启用心跳。</div>
     </div>
-    <div class="notice">隐私提示：后台只记录设备 ID、IP、User-Agent、项目名称/场次数和心跳时间，不记录台词正文、API Key 或用户图片。请使用 HTTPS，并限制后台访问来源。</div>
+    <div class="section-head"><div><h3>访问记录</h3><p>每次打开应用都会记录一条，包含服务端看到的 IP。</p></div><span class="updated" id="logNote"></span></div>
+    <div class="table-wrap logs-wrap">
+      <table>
+        <thead><tr><th>时间</th><th>设备</th><th>IP</th><th>项目 / 页面</th><th>平台</th></tr></thead>
+        <tbody id="logRows"></tbody>
+      </table>
+      <div class="empty hidden" id="logEmpty">还没有打开记录。</div>
+    </div>
+    <div class="notice">隐私提示：后台只记录设备 ID、IP、User-Agent、项目名称/场次数和打开时间，不记录台词正文、API Key 或用户图片。请使用 HTTPS，并限制后台访问来源。</div>
   </main>
 </div>
 
@@ -177,10 +185,11 @@
   async function logout(){ try { await api('/api/admin/logout', { method: 'POST', body: '{}' }); } catch(e){} csrf=''; showLogin(); }
   async function refresh(){
     try {
-      const [ov, list] = await Promise.all([api('/api/admin/overview'), api('/api/admin/devices')]);
+      const [ov, list, logs] = await Promise.all([api('/api/admin/overview'), api('/api/admin/devices'), api('/api/admin/logs')]);
       $('#statTotal').textContent = ov.total; $('#statOnline').textContent = ov.online; $('#statRevoked').textContent = ov.revoked;
       devices = list.devices || [];
       render();
+      renderLogs(logs.logs || []);
       $('#updatedAt').textContent = '更新于 ' + new Date().toLocaleTimeString('zh-CN');
     } catch (e) { if (e.message !== '未登录') console.warn(e); }
   }
@@ -200,9 +209,22 @@
         <td data-label="工作台"><div class="project"><b>${esc(d.projectTitle || '—')}</b><span>${esc([d.mode,d.sceneCount ? d.sceneCount + ' 镜' : '',d.currentView].filter(Boolean).join(' · ')) || '—'}</span></div></td>
         <td data-label="最近在线"><span class="pill">${esc(rel(d.lastSeen))}</span><div style="font-size:8.5px;color:var(--faint);margin-top:3px">${esc(fmt(d.lastSeen))}</div></td>
         <td data-label="状态">${d.revoked ? '<span class="pill revoked">已下线</span>' : online ? '<span class="pill" style="color:var(--pass)">在线</span>' : '<span class="pill">离线</span>'}</td>
-        <td data-label="操作"><div class="actions">${d.revoked ? `<button class="btn ghost" data-act="restore" data-id="${esc(d.id)}">恢复</button>` : `<button class="btn danger" data-act="revoke" data-id="${esc(d.id)}">下线</button>`}</div></td>
+        <td data-label="操作"><div class="actions">${d.revoked ? `<button class="btn ghost" data-act="restore" data-id="${esc(d.id)}">恢复</button>` : `<button class="btn danger" data-act="revoke" data-id="${esc(d.id)}">强制下线</button>`}</div></td>
       </tr>`;
     }).join('');
+  }
+  function renderLogs(logs){
+    const q = $('#search').value.trim().toLowerCase();
+    const list = q ? logs.filter((l) => [l.name,l.deviceId,l.ip,l.projectTitle,l.platform].join(' ').toLowerCase().includes(q)) : logs;
+    $('#logNote').textContent = list.length + ' 条';
+    $('#logEmpty').classList.toggle('hidden', list.length > 0);
+    $('#logRows').innerHTML = list.map((l) => `<tr>
+      <td>${esc(fmt(l.at))}</td>
+      <td><b style="font-size:10px">${esc(l.name || '未命名设备')}</b><div style="font:9px var(--mono);color:var(--faint)">${esc(l.deviceId)}</div></td>
+      <td><div class="ip">${esc(l.ip || '—')}<small>${l.ipSource === 'proxy' ? '代理转发 IP' : '直连 IP'}</small></div></td>
+      <td><div class="project"><b>${esc(l.projectTitle || '—')}</b><span>${esc([l.mode, l.sceneCount ? l.sceneCount + ' 镜' : '', l.currentView].filter(Boolean).join(' · '))}</span></div></td>
+      <td><span class="pill ${String(l.platform).includes('mini') ? 'app' : 'web'}">${esc(l.platform || 'web')}</span></td>
+    </tr>`).join('');
   }
   async function act(id, action){
     if (action === 'revoke') {
