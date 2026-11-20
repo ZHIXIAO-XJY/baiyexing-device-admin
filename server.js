@@ -26,11 +26,12 @@ const ONLINE_MS = 90 * 1000;
 const sessions = new Map();
 const loginHits = new Map();
 let state = { admin: null };
-let devices = { devices: [] };
+let devices = { devices: [], logs: [] };
 let saveQueue = Promise.resolve();
 
 const now = () => new Date().toISOString();
 const sha = (s) => crypto.createHash('sha256').update(String(s)).digest('hex');
+const id = (prefix = 'id') => `${prefix}_${crypto.randomBytes(9).toString('base64url')}`;
 const safeEqual = (a, b) => {
   const aa = Buffer.from(String(a)); const bb = Buffer.from(String(b));
   return aa.length === bb.length && crypto.timingSafeEqual(aa, bb);
@@ -100,6 +101,7 @@ async function load() {
   try { state = JSON.parse(await fs.readFile(STATE_FILE, 'utf8')); } catch { state = { admin: null }; }
   try { devices = JSON.parse(await fs.readFile(DEVICES_FILE, 'utf8')); } catch { devices = { devices: [] }; }
   if (!Array.isArray(devices.devices)) devices.devices = [];
+  if (!Array.isArray(devices.logs)) devices.logs = [];
   if (!state.admin) {
     const password = process.env.ADMIN_PASSWORD || crypto.randomBytes(12).toString('base64url');
     const salt = crypto.randomBytes(16).toString('hex');
@@ -131,6 +133,20 @@ function session(req) {
   s.last = Date.now();
   return { sid, ...s };
 }
+
+function cleanLog(l) {
+  return {
+    id: l.id, deviceId: l.deviceId, name: l.name || '', platform: l.platform || 'web',
+    ip: l.ip || '', ipSource: l.ipSource || '', projectTitle: l.projectTitle || '',
+    mode: l.mode || '', sceneCount: Number(l.sceneCount) || 0,
+    currentView: l.currentView || '', userAgent: l.userAgent || '', at: l.at
+  };
+}
+function appendLog(item) {
+  devices.logs.push(item);
+  if (devices.logs.length > 2000) devices.logs = devices.logs.slice(-2000);
+}
+
 function cleanDevice(d) {
   return {
     id: d.id, name: d.name || '', platform: d.platform || 'web', appVersion: d.appVersion || '',
@@ -192,6 +208,31 @@ async function handle(req, res) {
     return json(req, res, 200, { ok: true, token, device: cleanDevice(item) });
   }
 
+  if (req.method === 'POST' && url.pathname === '/api/device/open') {
+    const d = await body(req);
+    const token = String(req.headers['x-device-token'] || '');
+    const item = devices.devices.find((x) => x.id === String(d.deviceId || '').trim() && x.tokenHash === sha(token));
+    if (!item) return json(req, res, 401, { error: 'invalid device' });
+    if (item.revoked) return json(req, res, 403, { error: 'DEVICE_REVOKED', message: item.revokeReason || '设备已被管理员下线' });
+    item.ip = ip(req);
+    item.ipSource = process.env.TRUST_PROXY === '1' ? 'proxy' : 'socket';
+    item.lastSeen = now();
+    item.projectTitle = String(d.projectTitle || '').slice(0, 120);
+    item.mode = String(d.mode || '').slice(0, 30);
+    item.sceneCount = Math.max(0, Number(d.sceneCount) || 0);
+    item.currentView = String(d.currentView || '工作台').slice(0, 50);
+    item.userAgent = String(req.headers['user-agent'] || '').slice(0, 300);
+    item.openCount = (Number(item.openCount) || 0) + 1;
+    appendLog({
+      id: id('log'), deviceId: item.id, name: item.name, platform: item.platform,
+      ip: item.ip, ipSource: item.ipSource, projectTitle: item.projectTitle,
+      mode: item.mode, sceneCount: item.sceneCount, currentView: item.currentView,
+      userAgent: item.userAgent, at: now()
+    });
+    await save();
+    return json(req, res, 200, { ok: true, openCount: item.openCount });
+  }
+
   if (req.method === 'POST' && url.pathname === '/api/device/heartbeat') {
     const d = await body(req);
     const token = String(req.headers['x-device-token'] || '');
@@ -248,6 +289,9 @@ async function handle(req, res) {
     }
     if (req.method === 'GET' && url.pathname === '/api/admin/devices') {
       return json(req, res, 200, { devices: devices.devices.map(cleanDevice).sort((a, b) => String(b.lastSeen).localeCompare(String(a.lastSeen))) });
+    }
+    if (req.method === 'GET' && url.pathname === '/api/admin/logs') {
+      return json(req, res, 200, { logs: devices.logs.slice(-500).map(cleanLog).reverse() });
     }
     const m = url.pathname.match(/^\/api\/admin\/devices\/([^/]+)\/(revoke|restore)$/);
     if (req.method === 'POST' && m) {
